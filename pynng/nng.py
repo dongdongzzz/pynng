@@ -34,7 +34,7 @@ Surveyor0 Respondent0
 # collected, a weak reference to the socket is stored here instead of the
 # actual socket.
 
-_live_sockets = weakref.WeakValueDictionary()
+_live_sockets = {}#weakref.WeakValueDictionary()
 
 
 def _ensure_can_send(thing):
@@ -1253,6 +1253,14 @@ def _nng_pipe_cb(lib_pipe, event, arg):
                 # will result in a KeyError below.
                 sock._remove_pipe(lib_pipe)
         elif event == lib.NNG_PIPE_EV_ADD_POST:
+            if pipe_id not in sock._pipes:
+                pipe = sock._add_pipe(lib_pipe)
+                _do_callbacks(pipe, sock._on_pre_pipe_add)
+                if pipe.closed:
+                    # NB: we need to remove the pipe from socket now, before a remote
+                    # tries connecting again and the same pipe ID may be reused.  This
+                    # will result in a KeyError below.
+                    sock._remove_pipe(lib_pipe)
             pipe = sock._pipes[pipe_id]
             _do_callbacks(pipe, sock._on_post_pipe_add)
         elif event == lib.NNG_PIPE_EV_REM_POST:
